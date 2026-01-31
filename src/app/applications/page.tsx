@@ -1,10 +1,29 @@
 import { prisma } from "@/lib/prisma";
 import { createApplication, deleteApplication, updateStage } from "./actions";
 import StatusBadge from "@/components/StatusBadge";
+import { redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
+/* -------------------- Logout Server Action -------------------- */
+async function logout() {
+  "use server";
+
+  const supabase = await createClient();
+  await supabase.auth.signOut();
+  redirect("/login");
+}
+
+/* -------------------- Page -------------------- */
 export default async function ApplicationsPage() {
+  const supabase = await createClient();
+  const { data } = await supabase.auth.getUser();
+
+  if (!data.user) {
+    redirect("/login");
+  }
+
   const applications = await prisma.application.findMany({
     orderBy: { createdAt: "desc" },
   });
@@ -12,14 +31,23 @@ export default async function ApplicationsPage() {
   return (
     <main className="min-h-screen p-6">
       <div className="max-w-3xl mx-auto space-y-6">
-        <header className="space-y-1">
-          <h1 className="text-3xl font-bold">Applications</h1>
-          <p className="text-sm text-neutral-500">
-            Your saved job applications (from Supabase).
-          </p>
+        {/* ---------------- Header ---------------- */}
+        <header className="flex items-center justify-between">
+          <div className="space-y-1">
+            <h1 className="text-3xl font-bold">Applications</h1>
+            <p className="text-sm text-neutral-500">
+              Your saved job applications (from Supabase).
+            </p>
+          </div>
+
+          <form action={logout}>
+            <button className="text-sm rounded-md border px-3 py-1 transition hover:bg-white/10">
+              Logout
+            </button>
+          </form>
         </header>
 
-        {/* Create */}
+        {/* ---------------- Create ---------------- */}
         <section className="rounded-xl border p-4">
           <h2 className="font-semibold mb-3">Add an application</h2>
 
@@ -51,23 +79,23 @@ export default async function ApplicationsPage() {
           </form>
         </section>
 
-        {/* Read + Update + Delete */}
+        {/* ---------------- Read + Update + Delete ---------------- */}
         <section className="rounded-xl border p-4">
           {applications.length === 0 ? (
             <div className="rounded-2xl border bg-white/5 p-10 text-center text-neutral-300">
-  <h3 className="text-lg font-semibold text-white">No applications yet</h3>
-  <p className="mt-1 text-sm text-neutral-400">
-    Add your first application to start tracking your pipeline.
-  </p>
-</div>
+              <h3 className="text-lg font-semibold text-white">
+                No applications yet
+              </h3>
+              <p className="mt-1 text-sm text-neutral-400">
+                Add your first application to start tracking your pipeline.
+              </p>
+            </div>
           ) : (
-              <ul className="grid grid-cols-1 gap-4 md:grid-cols-2">
-
+            <ul className="grid grid-cols-1 gap-4 md:grid-cols-2">
               {applications.map((a) => (
                 <li
                   key={a.id}
                   className="rounded-2xl border bg-white/5 p-5 shadow-sm transition hover:bg-white/10 hover:shadow-md"
-
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0 space-y-2">
@@ -88,10 +116,8 @@ export default async function ApplicationsPage() {
                         >
                           <span>Stage:</span>
 
-                          {/* ✅ Display badge (read mode) */}
                           <StatusBadge stage={a.stage} />
 
-                          {/* ✅ Dropdown stays (edit mode) */}
                           <select
                             name="stage"
                             defaultValue={a.stage}
@@ -107,7 +133,7 @@ export default async function ApplicationsPage() {
 
                           <button
                             type="submit"
-                            className="text-xs rounded-md border px-2 py-1 hover:bg-neutral-50 transition"
+                            className="text-xs rounded-md border px-2 py-1 transition hover:bg-neutral-50"
                           >
                             Update
                           </button>
@@ -117,8 +143,7 @@ export default async function ApplicationsPage() {
                       </div>
                     </div>
 
-                      <div className="flex shrink-0 items-center gap-3">
-
+                    <div className="flex shrink-0 items-center gap-3">
                       <div className="text-xs text-neutral-500">
                         {new Date(a.createdAt).toLocaleDateString()}
                       </div>
@@ -131,7 +156,7 @@ export default async function ApplicationsPage() {
                       >
                         <button
                           type="submit"
-                          className="text-xs rounded-md border px-2 py-1 hover:bg-neutral-50 transition"
+                          className="text-xs rounded-md border px-2 py-1 transition hover:bg-neutral-50"
                         >
                           Delete
                         </button>
