@@ -7,15 +7,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum ApplicationStage {
-  SAVED
-  APPLIED
-  OA
-  INTERVIEW
-  OFFER
-  REJECTED
-}
-
 model Application {
   id        String           @id @default(cuid())
   company   String
@@ -25,10 +16,9 @@ model Application {
   salary    String?
   stage     ApplicationStage @default(SAVED)
   notes     String?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+  userId    String
   tasks     Task[]
 }
 
@@ -38,11 +28,18 @@ model Task {
   title         String
   dueDate       DateTime?
   completed     Boolean     @default(false)
-
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
-
   application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
 
   @@index([applicationId])
+}
+
+enum ApplicationStage {
+  SAVED
+  APPLIED
+  OA
+  INTERVIEW
+  OFFER
+  REJECTED
 }

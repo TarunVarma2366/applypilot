@@ -3,17 +3,21 @@ import { createApplication, deleteApplication, updateStage } from "./actions";
 import StatusBadge from "@/components/StatusBadge";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { logout } from "./actions";
+
 
 export const dynamic = "force-dynamic";
 
 /* -------------------- Logout Server Action -------------------- */
-async function logout() {
-  "use server";
+<form action={logout}>
+  <button
+    type="submit"
+    className="text-sm rounded-md border px-3 py-2 hover:bg-neutral-50 transition"
+  >
+    Logout
+  </button>
+</form>
 
-  const supabase = await createClient();
-  await supabase.auth.signOut();
-  redirect("/login");
-}
 
 /* -------------------- Page -------------------- */
 export default async function ApplicationsPage() {
@@ -25,6 +29,7 @@ export default async function ApplicationsPage() {
   }
 
   const applications = await prisma.application.findMany({
+    where: { userId: data.user.id },
     orderBy: { createdAt: "desc" },
   });
 
