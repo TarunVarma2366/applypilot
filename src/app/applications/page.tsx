@@ -1,5 +1,10 @@
 import { prisma } from "@/lib/prisma";
-import { createApplication, deleteApplication, updateStage, logout } from "./actions";
+import {
+  createApplication,
+  deleteApplication,
+  updateStage,
+  logout,
+} from "./actions";
 import StatusBadge from "@/components/StatusBadge";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
@@ -47,7 +52,7 @@ export default async function ApplicationsPage() {
           </form>
         </header>
 
-        {/* ---------------- Create ---------------- */}
+        {/* ---------------- Create Application ---------------- */}
         <section className="rounded-xl border p-4">
           <h2 className="font-semibold mb-3">Add an application</h2>
 
@@ -79,7 +84,7 @@ export default async function ApplicationsPage() {
           </form>
         </section>
 
-        {/* ---------------- Read + Update + Delete ---------------- */}
+        {/* ---------------- Applications List ---------------- */}
         <section className="rounded-xl border p-4">
           {applications.length === 0 ? (
             <div className="rounded-2xl border bg-white/5 p-10 text-center text-neutral-300">
@@ -97,6 +102,7 @@ export default async function ApplicationsPage() {
                   key={a.id}
                   className="rounded-2xl border bg-white/5 p-5 shadow-sm transition hover:bg-white/10 hover:shadow-md"
                 >
+                  {/* ---------- Application Header ---------- */}
                   <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0 space-y-2">
                       <div className="font-semibold text-base truncate">
@@ -107,7 +113,9 @@ export default async function ApplicationsPage() {
                         <form
                           action={async (formData) => {
                             "use server";
-                            const stage = String(formData.get("stage") || "SAVED");
+                            const stage = String(
+                              formData.get("stage") || "SAVED"
+                            );
                             await updateStage(a.id, stage);
                           }}
                           className="flex items-center gap-2"
@@ -173,7 +181,7 @@ export default async function ApplicationsPage() {
                       </span>
                     </div>
 
-                    {/* Add task */}
+                    {/* Add Task */}
                     <form
                       action={async (formData) => {
                         "use server";
@@ -183,6 +191,7 @@ export default async function ApplicationsPage() {
                     >
                       <input
                         name="title"
+                        required
                         placeholder="Add a task (e.g., follow up, schedule interview)"
                         className="w-full rounded-md border px-3 py-2 text-sm"
                       />
@@ -194,13 +203,15 @@ export default async function ApplicationsPage() {
                       </button>
                     </form>
 
-                    {/* Task list */}
+                    {/* Task List */}
                     <ul className="mt-3 space-y-2">
                       {a.tasks.length ? (
                         a.tasks.map((t) => (
                           <li
                             key={t.id}
-                            className="flex items-center justify-between gap-3"
+                            className={`flex items-center justify-between gap-3 ${
+                              t.completed ? "opacity-60" : ""
+                            }`}
                           >
                             <form
                               action={async () => {
@@ -211,11 +222,16 @@ export default async function ApplicationsPage() {
                             >
                               <button
                                 type="submit"
-                                className={`h-4 w-4 rounded border ${
-                                  t.completed ? "bg-black" : "bg-white"
+                                className={`h-4 w-4 rounded border flex items-center justify-center text-[10px] ${
+                                  t.completed
+                                    ? "bg-black text-white"
+                                    : "bg-white text-transparent"
                                 }`}
                                 aria-label="Toggle task"
-                              />
+                              >
+                                ✓
+                              </button>
+
                               <span
                                 className={`text-sm truncate ${
                                   t.completed
