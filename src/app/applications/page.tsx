@@ -12,7 +12,18 @@ import { createTask, toggleTask, deleteTask } from "./taskActions";
 
 export const dynamic = "force-dynamic";
 
-export default async function ApplicationsPage() {
+const PAGE_SIZE = 10;
+
+// ✅ deterministic date formatting (prevents hydration mismatch)
+function formatDate(d: Date) {
+  return d.toISOString().slice(0, 10); // YYYY-MM-DD
+}
+
+export default async function ApplicationsPage({
+  searchParams,
+}: {
+  searchParams: Promise< { cursor?: string }>;
+}) {
   const supabase = await createClient();
   const { data } = await supabase.auth.getUser();
 
@@ -20,15 +31,29 @@ export default async function ApplicationsPage() {
     redirect("/login");
   }
 
+  const {cursor} = await searchParams;
   const applications = await prisma.application.findMany({
     where: { userId: data.user.id },
     orderBy: { createdAt: "desc" },
+    take: PAGE_SIZE + 1,
+    ...(cursor
+      ? {
+          cursor: { id: cursor },
+          skip: 1,
+        }
+      : {}),
     include: {
       tasks: {
         orderBy: { createdAt: "desc" },
       },
     },
   });
+
+  let nextCursor: string | null = null;
+  if (applications.length > PAGE_SIZE) {
+    const nextItem = applications.pop();
+    nextCursor = nextItem!.id;
+  }
 
   return (
     <main className="min-h-screen p-6">
@@ -151,7 +176,8 @@ export default async function ApplicationsPage() {
 
                     <div className="flex shrink-0 items-center gap-3">
                       <div className="text-xs text-neutral-500">
-                        {new Date(a.createdAt).toLocaleDateString()}
+                        {/* ✅ hydration-safe */}
+                        {formatDate(a.createdAt)}
                       </div>
 
                       <form
@@ -228,6 +254,11 @@ export default async function ApplicationsPage() {
                                     : "bg-white text-transparent"
                                 }`}
                                 aria-label="Toggle task"
+                                title={
+                                  t.completed
+                                    ? "Mark as incomplete"
+                                    : "Mark as complete"
+                                }
                               >
                                 ✓
                               </button>
@@ -271,6 +302,18 @@ export default async function ApplicationsPage() {
             </ul>
           )}
         </section>
+
+        {/* ---------------- Pagination ---------------- */}
+        {nextCursor ? (
+          <div className="flex justify-center">
+            <a
+              href={`/applications?cursor=${nextCursor}`}
+              className="text-sm rounded-md border px-4 py-2 hover:bg-neutral-50 transition"
+            >
+              Load more
+            </a>
+          </div>
+        ) : null}
       </div>
     </main>
   );
