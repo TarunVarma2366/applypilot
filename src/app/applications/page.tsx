@@ -1,25 +1,12 @@
 import { prisma } from "@/lib/prisma";
-import { createApplication, deleteApplication, updateStage } from "./actions";
+import { createApplication, deleteApplication, updateStage, logout } from "./actions";
 import StatusBadge from "@/components/StatusBadge";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { logout } from "./actions";
-
+import { createTask, toggleTask, deleteTask } from "./taskActions";
 
 export const dynamic = "force-dynamic";
 
-/* -------------------- Logout Server Action -------------------- */
-<form action={logout}>
-  <button
-    type="submit"
-    className="text-sm rounded-md border px-3 py-2 hover:bg-neutral-50 transition"
-  >
-    Logout
-  </button>
-</form>
-
-
-/* -------------------- Page -------------------- */
 export default async function ApplicationsPage() {
   const supabase = await createClient();
   const { data } = await supabase.auth.getUser();
@@ -31,13 +18,18 @@ export default async function ApplicationsPage() {
   const applications = await prisma.application.findMany({
     where: { userId: data.user.id },
     orderBy: { createdAt: "desc" },
+    include: {
+      tasks: {
+        orderBy: { createdAt: "desc" },
+      },
+    },
   });
 
   return (
     <main className="min-h-screen p-6">
       <div className="max-w-3xl mx-auto space-y-6">
         {/* ---------------- Header ---------------- */}
-        <header className="flex items-center justify-between">
+        <header className="flex items-center justify-between gap-4">
           <div className="space-y-1">
             <h1 className="text-3xl font-bold">Applications</h1>
             <p className="text-sm text-neutral-500">
@@ -46,7 +38,10 @@ export default async function ApplicationsPage() {
           </div>
 
           <form action={logout}>
-            <button className="text-sm rounded-md border px-3 py-1 transition hover:bg-white/10">
+            <button
+              type="submit"
+              className="text-sm rounded-md border px-3 py-2 transition hover:bg-neutral-50"
+            >
               Logout
             </button>
           </form>
@@ -112,9 +107,7 @@ export default async function ApplicationsPage() {
                         <form
                           action={async (formData) => {
                             "use server";
-                            const stage = String(
-                              formData.get("stage") || "SAVED"
-                            );
+                            const stage = String(formData.get("stage") || "SAVED");
                             await updateStage(a.id, stage);
                           }}
                           className="flex items-center gap-2"
@@ -167,6 +160,95 @@ export default async function ApplicationsPage() {
                         </button>
                       </form>
                     </div>
+                  </div>
+
+                  {/* ---------------- Tasks ---------------- */}
+                  <div className="mt-4 border-t pt-4">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-sm font-semibold text-neutral-700">
+                        Tasks
+                      </h3>
+                      <span className="text-xs text-neutral-400">
+                        {a.tasks.filter((t) => !t.completed).length} open
+                      </span>
+                    </div>
+
+                    {/* Add task */}
+                    <form
+                      action={async (formData) => {
+                        "use server";
+                        await createTask(a.id, formData);
+                      }}
+                      className="mt-2 flex gap-2"
+                    >
+                      <input
+                        name="title"
+                        placeholder="Add a task (e.g., follow up, schedule interview)"
+                        className="w-full rounded-md border px-3 py-2 text-sm"
+                      />
+                      <button
+                        type="submit"
+                        className="text-sm rounded-md bg-black text-white px-3 py-2"
+                      >
+                        Add
+                      </button>
+                    </form>
+
+                    {/* Task list */}
+                    <ul className="mt-3 space-y-2">
+                      {a.tasks.length ? (
+                        a.tasks.map((t) => (
+                          <li
+                            key={t.id}
+                            className="flex items-center justify-between gap-3"
+                          >
+                            <form
+                              action={async () => {
+                                "use server";
+                                await toggleTask(t.id, !t.completed);
+                              }}
+                              className="flex items-center gap-2 min-w-0"
+                            >
+                              <button
+                                type="submit"
+                                className={`h-4 w-4 rounded border ${
+                                  t.completed ? "bg-black" : "bg-white"
+                                }`}
+                                aria-label="Toggle task"
+                              />
+                              <span
+                                className={`text-sm truncate ${
+                                  t.completed
+                                    ? "line-through text-neutral-400"
+                                    : "text-neutral-700"
+                                }`}
+                                title={t.title}
+                              >
+                                {t.title}
+                              </span>
+                            </form>
+
+                            <form
+                              action={async () => {
+                                "use server";
+                                await deleteTask(t.id);
+                              }}
+                            >
+                              <button
+                                type="submit"
+                                className="text-xs rounded-md border px-2 py-1 hover:bg-neutral-50 transition"
+                              >
+                                Delete
+                              </button>
+                            </form>
+                          </li>
+                        ))
+                      ) : (
+                        <li className="text-sm text-neutral-400">
+                          No tasks yet.
+                        </li>
+                      )}
+                    </ul>
                   </div>
                 </li>
               ))}
